@@ -1,177 +1,181 @@
 # ✋ Hand Gesture Recognition & Servo Control
 
-This project implements a **hand gesture recognition system** using **MediaPipe** and an **Arduino-controlled servo system** via the **PCA9685** module.  
-The system has been tested on a **Raspberry Pi 4 (4GB RAM)** using a **phone camera with DroidCam** as the video input.
+A real-time **hand gesture recognition system** built with **MediaPipe**, driving physical servos through an **Arduino** and a **PCA9685** servo driver.
+Tested on a **Raspberry Pi 4 (4 GB RAM)** using a **phone camera over Wi-Fi (DroidCam)** as the video input.
+
+<!-- TODO: add a demo GIF or photo, e.g. ![Demo](docs/demo.gif) -->
 
 ---
 
-## 🧠 Project Overview
+## 🧠 Overview
 
-The system performs:
+- Real-time hand landmark detection with **MediaPipe**.
+- Gesture classification with the trained model `gesture_recognition.task`.
+- Servo control through an **Arduino** (PCA9685 over I²C) to reproduce gestures on physical servos.
+- **Gesture stability logic**: a gesture must be detected for N consecutive frames (`<N>`, see `optimized_control.py`) before the servos move, which avoids false triggers.
 
-- Real-time hand gesture recognition using **MediaPipe**.  
-- Gesture classification with the trained model `gesture_recognition.task`.  
-- Servo control via **Arduino** to reproduce hand gestures on physical servos.  
-- **Gesture stability logic** to avoid false servo movements.  
-
-> The video feed from the phone is connected over **Wi-Fi**, no additional camera setup is needed.  
+The phone's video feed is streamed over Wi-Fi, so no extra camera wiring is needed.
 
 ---
 
 ## 🗂️ Project Structure
 
-iheb_hand_gesture_recognition/  
-
-├── arduino/  
-    └── servo_control  
-        └─└── servo_control.ino # Arduino code to control servos via PCA9685 according to the gesture   
-    └── libraires # libraires for the PCA9685 module  
-
-├── mediapipe_env/     
-    └── (virtual environment files)  
-    └── bin/activate # Must be sourced to activate Python env  
-
-├── gesture_recognition.task # Trained gesture recognition model  
-├── recognition.py # Base gesture recognition (non-optimized)  
-├── optimized.py # Optimized recognition (higher FPS, cleaner)  
-├── optimized_control.py # Full system: gesture recognition + servo control  
-├── requirements.txt   # Liste des dépendances Python  
-├── README.md # Project documentation  
-
+```text
+iheb_hand_gesture_recognition/
+├── arduino/
+│   ├── servo_control/
+│   │   └── servo_control.ino    # Arduino sketch: drives servos via PCA9685 from serial commands
+│   └── libraries/               # Libraries for the PCA9685 module
+├── mediapipe_env/               # Python virtual environment (activate with bin/activate)
+├── gesture_recognition.task     # Trained gesture recognition model
+├── recognition.py               # Base gesture recognition (non-optimized)
+├── optimized.py                 # Optimized recognition (higher FPS, cleaner output)
+├── optimized_control.py         # Full system: gesture recognition + servo control
+├── requirements.txt             # Python dependencies
+└── README.md
+```
 
 ---
 
 ## ⚙️ Requirements
 
 ### 🔹 Hardware
-- **Raspberry Pi 4 (4/8GB RAM)**  
-- Phone camera with **DroidCam** OR USB webcam (camera setup configuration is needed )
-- Arduino board (Uno, Mega, etc.)  
-- PCA9685 16-channel servo driver  
-- Servomotors (SPT5632 or similar)  
-- USB cable for Arduino communication  
+
+- **Raspberry Pi 4** (tested on 4 GB RAM)
+- Phone with **DroidCam**, or a USB webcam (see [Using a USB webcam](#-using-a-usb-webcam))
+- Arduino board (Uno, Mega, etc.)
+- **PCA9685** 16-channel servo driver (connected to the Arduino over **I²C**)
+- Servomotors (SPT5632 or similar), 5 used
+- USB cable between the Raspberry Pi and the Arduino
+- **External 5–6 V power supply for the servos**
+
+> ⚠️ **Do not power the servos from the Arduino's 5 V pin.** Servos draw high current, which causes jitter and brownouts. Feed the PCA9685 `V+` terminal from a dedicated supply and connect all grounds together (Arduino, PCA9685, supply).
 
 ### 🔹 Software
-- Raspberry Pi OS / Ubuntu  
-- Python 3.11+  
-- Arduino IDE  
-- DroidCam client on phone (no need to install on Raspberry Pi)
+
+- Raspberry Pi OS / Ubuntu (**64-bit** OS recommended, MediaPipe ARM wheels require it)
+- Python 3.11+
+- Arduino IDE
+- DroidCam app on the phone (nothing to install on the Raspberry Pi)
 
 ---
 
-## 🧩 Python Dependencies
+## 🐍 Python Dependencies
 
-Le projet nécessite Python 3.11+ et les packages suivants (voir requirements.txt) :
+- `mediapipe`
+- `opencv-python`
+- `numpy`
+- `pyserial`
 
--mediapipe
-
--opencv-python
-
--numpy
-
--pyserial
-
-Installation rapide :
+Installation:
 
 ```bash
 python3 -m venv mediapipe_env
-source ~/mediapipe_env/bin/activate
+source mediapipe_env/bin/activate
 pip install -r requirements.txt
 ```
 
-Then install dependencies:
+Or install the packages manually:
 
 ```bash
 pip install mediapipe opencv-python numpy pyserial
 ```
+
 ---
 
-## 🧩 How to Run : 
-1️⃣ Start DroidCam on your phone
+## ▶️ How to Run
 
-- Open DroidCam on your phone and leave it running.  
-- Make sure the phone and Raspberry Pi are connected to the same Wi-Fi network.  
-- Note the video feed URL displayed by DroidCam, e.g.:  
-http://192.168.1.12:4747/video_feed (The script optimized_control.py already contains this URL. Adjust it based on your Wifi IP adress)    
+### 1. Start DroidCam on your phone
 
-2️⃣ Activate the Python environment
+- Open DroidCam and leave it running.
+- Make sure the phone and the Raspberry Pi are on the **same Wi-Fi network**.
+- Note the video URL shown by DroidCam, for example:
+
+  ```text
+  http://192.168.1.12:4747/video
+  ```
+
+- `optimized_control.py` contains this URL. Update it to match your phone's IP address (it can change whenever the router reassigns it) and keep the endpoint path DroidCam displays.
+
+### 2. Activate the Python environment
 
 ```bash
-cd "path_to_your_project_folder/"
-source ~/mediapipe_env/bin/activate
+cd path_to_your_project_folder/
+source mediapipe_env/bin/activate
 ```
 
-3️⃣ Check your Arduino port
+### 3. Find your Arduino serial port
 
-Verify with:
 ```bash
-ls /dev/ttyACM* /dev/ttyUSB* 
+ls /dev/ttyACM* /dev/ttyUSB*
 ```
-Make sure to use the correct port when running the script.
 
-4️⃣ Run the Python script
+Typical results: `/dev/ttyACM0` (Uno/Mega) or `/dev/ttyUSB0` (clones).
+
+### 4. Run the script
 
 ```bash
 python3 optimized_control.py
 ```
 
-- Replace /dev/ttyACM0 with your actual Arduino port.  
-- The script automatically connects to the phone camera via Wi-Fi.  
-- It detects hand gestures and sends servo commands to the Arduino.  
-- Press ESC to exit.  
+- Serial port: set it via `<TODO: CLI argument or constant name in optimized_control.py>`.
+- The script connects to the phone camera over Wi-Fi, detects gestures, and sends servo commands to the Arduino.
+- Press **ESC** to exit.
 
 ---
 
-## 🧩 Arduino Setup:
-Upload the code in arduino/servo_control.ino via Arduino IDE.
-The Arduino listens to serial commands from Python and drives the 5 servos via the PCA9685 module.
+## 🔌 Arduino Setup
+
+1. Install the PCA9685 library from `arduino/libraries/` (or via the Arduino Library Manager).
+2. Upload `arduino/servo_control/servo_control.ino` with the Arduino IDE.
+3. The Arduino listens for serial commands from Python and drives the 5 servos through the PCA9685.
+
+### Serial protocol
+
+| Parameter | Value |
+|-----------|-------|
+| Baud rate | `<TODO>` |
+| Command format | `<TODO: e.g. one line per gesture>` |
+
+### Gesture → servo mapping
+
+| Gesture | Servo positions / action |
+|---------|--------------------------|
+| `<TODO>` | `<TODO>` |
 
 ---
 
-## 🧩 Workflow :
+## 🔄 Workflow
 
-- Phone camera streams video via DroidCam over Wi-Fi.  
-
-- MediaPipe extracts hand landmarks.  
-
-- Model (gesture_recognition.task) classifies the gesture.  
-
-- Python sends commands via serial to Arduino.  
-
-- Arduino moves servos according to the gesture.  
-
-- Gesture stability logic ensures only stable gestures trigger servo movement.  
+1. The phone streams video via DroidCam over Wi-Fi.
+2. MediaPipe extracts hand landmarks.
+3. `gesture_recognition.task` classifies the gesture.
+4. Stability logic confirms the gesture over consecutive frames.
+5. Python sends the command to the Arduino over serial.
+6. The Arduino moves the servos accordingly.
 
 ---
 
-## 🧩 Future Improvements :
+## 📷 Using a USB webcam
 
-- Support multiple hands simultaneously	
+In `optimized_control.py`, replace the DroidCam URL passed to OpenCV with a camera index:
 
+```python
+cap = cv2.VideoCapture(0)  # 0 = first USB camera
+```
+
+---
+
+## 🚀 Future Improvements
+
+- Support multiple hands simultaneously
 - Add more gestures and retrain the model
-
 - Integrate with ROS 2 for robotic applications
-
-- Develop GUI for visualization 
-
-- Test on more powerful development boards (e.g., NVIDIA Jetson) to increase performance and allow real-time multi-hand recognition
+- Develop a GUI for visualization
+- Test on more powerful boards (e.g. NVIDIA Jetson) to improve performance and enable real-time multi-hand recognition
 
 ---
 
+## 📄 License
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+`<TODO: add a license, e.g. MIT>`
