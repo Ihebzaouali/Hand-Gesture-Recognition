@@ -211,7 +211,7 @@ Then run with `--cameraId 0` (or the index of your camera).
 ---
 
 ## 📄 License
-
+ 
+This project is released under the [MIT License](LICENSE).
+ 
 Parts of `optimized_control.py` are adapted from the MediaPipe Gesture Recognizer example (© The MediaPipe Authors, Apache License 2.0).
-
-<!-- TODO: add a license for this project, e.g. a LICENSE file (MIT or Apache-2.0) -->
